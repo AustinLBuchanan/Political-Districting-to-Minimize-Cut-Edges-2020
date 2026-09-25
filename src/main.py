@@ -556,7 +556,7 @@ for key in batch_configs.keys():
         districts = [ [ i for i in DG.nodes if m._X[i,j].x > 0.5 ] for j in labels]
         print("best solution (found) =",districts)
         
-        fn = "../" + "results_for_" + config_filename_wo_extension + "/" + result['state'] + "-" + result['level'] + "-" + result['base'] + "-" + result['contiguity']
+        fn = "../" + "results_for_" + config_filename_wo_extension + "/" + result['state'] + "-" + result['level'] + "-" + result['base'] + "-" + result['contiguity'] + "-" + str(config['warmstart'])
         
         # export solution to .json file
         json_fn = fn + "_" + str(deviation) + ".json"
