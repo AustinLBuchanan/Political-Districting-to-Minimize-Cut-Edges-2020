@@ -25,6 +25,16 @@ import separation
 from gerrychain import Graph
 import geopandas as gpd
 
+def cut_edges(G, plan):
+    a = { i : j for j in range(len(plan)) for i in plan[j] }
+    return sum( 1 for i,j in G.edges if a[i] != a[j] )
+
+def exhibited_deviation(G, plan):
+    ideal = sum( G.nodes[i]['TOTPOP'] for i in G.nodes ) / len(plan)
+    return max( abs( ideal - sum( G.nodes[i]['TOTPOP'] for i in district ) ) for district in plan )
+
+# this is the pareto frontier for Iowa county-level graph (cut edges vs. deviation)!
+warmstarts = [[[2, 3, 12, 18, 24, 25, 26, 28, 38, 39, 44, 46, 47, 54, 56, 60, 67, 71, 72, 82, 83, 86, 87, 90, 94, 95, 96, 97], [5, 6, 7, 10, 11, 15, 29, 34, 45, 51, 61, 69, 75, 77, 80, 85, 88, 98], [1, 9, 13, 14, 16, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 36, 37, 40, 41, 42, 48, 49, 50, 52, 53, 55, 57, 58, 59, 62, 63, 64, 65, 68, 70, 74, 76, 78, 79, 84, 89, 91, 92], [0, 4, 8, 17, 43, 66, 73, 81, 93]], [[0, 5, 7, 9, 13, 24, 25, 30, 32, 34, 36, 44, 47, 50, 51, 56, 57, 61, 63, 64, 69, 70, 72, 74, 77, 80, 81, 82, 87, 90, 91], [1, 2, 14, 17, 19, 20, 21, 22, 23, 27, 31, 33, 35, 37, 40, 41, 42, 43, 49, 52, 53, 55, 58, 59, 62, 65, 66, 68, 71, 73, 76, 78, 79, 84, 89, 92, 93], [4, 6, 8, 10, 12, 16, 18, 29, 46, 48, 60, 86, 94, 96], [3, 11, 15, 26, 28, 38, 39, 45, 54, 67, 75, 83, 85, 88, 95, 97, 98]], [[1, 4, 9, 14, 17, 19, 20, 23, 30, 31, 32, 33, 35, 37, 40, 42, 43, 49, 52, 53, 55, 58, 62, 63, 65, 66, 73, 84, 89, 91, 93], [0, 6, 10, 16, 29, 34, 36, 45, 50, 51, 57, 64, 70, 75, 81, 85, 88, 98], [5, 7, 11, 12, 13, 15, 24, 25, 26, 38, 39, 44, 46, 47, 48, 54, 56, 61, 67, 69, 72, 74, 76, 77, 80, 82, 87, 90, 96, 97], [2, 3, 8, 18, 21, 22, 27, 28, 41, 59, 60, 68, 71, 78, 79, 83, 86, 92, 94, 95]], [[6, 12, 21, 22, 27, 29, 34, 38, 39, 46, 48, 51, 54, 60, 67, 71, 75, 85, 86, 88, 96, 97, 98], [5, 7, 10, 11, 13, 15, 16, 24, 25, 26, 36, 44, 45, 47, 50, 56, 57, 61, 69, 72, 74, 77, 80, 81, 82, 87, 90], [0, 3, 4, 8, 17, 18, 28, 43, 49, 66, 83, 95], [1, 2, 9, 14, 19, 20, 23, 30, 31, 32, 33, 35, 37, 40, 41, 42, 52, 53, 55, 58, 59, 62, 63, 64, 65, 68, 70, 73, 76, 78, 79, 84, 89, 91, 92, 93, 94]], [[4, 6, 7, 10, 15, 16, 18, 29, 34, 36, 49, 50, 51, 56, 69, 75, 77, 83, 88], [11, 24, 25, 26, 28, 39, 44, 45, 47, 54, 61, 67, 72, 82, 85, 87, 90, 97, 98], [3, 8, 12, 17, 38, 46, 48, 78, 93, 94, 95], [0, 1, 2, 5, 9, 13, 14, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 37, 40, 41, 42, 43, 52, 53, 55, 57, 58, 59, 60, 62, 63, 64, 65, 66, 68, 70, 71, 73, 74, 76, 79, 80, 81, 84, 86, 89, 91, 92, 96]], [[5, 7, 11, 13, 15, 25, 29, 32, 36, 51, 56, 57, 61, 64, 69, 70, 72, 74, 75, 77, 80, 81, 82, 87, 90], [3, 6, 12, 16, 18, 24, 26, 28, 34, 39, 44, 45, 47, 49, 54, 67, 83, 85, 88, 95, 97, 98], [0, 1, 2, 9, 14, 19, 20, 21, 22, 23, 27, 30, 31, 33, 35, 38, 40, 41, 42, 43, 46, 48, 50, 52, 55, 58, 59, 60, 63, 65, 66, 68, 71, 73, 76, 78, 79, 84, 86, 89, 91, 92, 94, 96], [4, 8, 10, 17, 37, 53, 62, 93]], [[1, 2, 3, 11, 12, 15, 21, 22, 24, 25, 26, 27, 38, 39, 41, 44, 46, 47, 53, 54, 60, 61, 67, 68, 71, 72, 76, 79, 82, 86, 87, 90, 96, 97], [0, 5, 9, 13, 14, 17, 19, 20, 23, 30, 31, 32, 33, 35, 37, 40, 42, 43, 49, 52, 55, 57, 58, 59, 62, 63, 64, 65, 66, 70, 73, 74, 81, 84, 89, 91, 92, 93], [4, 8, 16, 18, 28, 48, 78, 83, 94, 95], [6, 7, 10, 29, 34, 36, 45, 50, 51, 56, 69, 75, 77, 80, 85, 88, 98]], [[3, 7, 11, 15, 24, 25, 28, 39, 44, 47, 54, 56, 61, 67, 72, 82, 83, 87, 90, 98], [5, 6, 13, 19, 29, 30, 32, 34, 35, 36, 40, 45, 51, 52, 55, 57, 64, 69, 70, 74, 75, 77, 80, 81, 85, 88, 89, 91], [0, 1, 2, 9, 12, 14, 16, 18, 20, 21, 22, 23, 26, 27, 31, 33, 38, 41, 42, 43, 46, 48, 49, 50, 58, 59, 60, 63, 65, 66, 68, 71, 73, 76, 78, 79, 84, 86, 92, 94, 95, 96, 97], [4, 8, 10, 17, 37, 53, 62, 93]], [[3, 10, 12, 18, 24, 25, 26, 28, 38, 39, 44, 45, 46, 47, 54, 61, 67, 83, 85, 86, 95, 96, 97, 98], [0, 5, 7, 11, 13, 15, 30, 32, 34, 35, 36, 40, 43, 50, 52, 56, 57, 64, 69, 70, 72, 74, 77, 80, 81, 82, 87, 88, 89, 90, 91], [1, 4, 6, 9, 14, 16, 17, 19, 20, 23, 29, 31, 33, 37, 41, 42, 49, 51, 55, 58, 59, 62, 63, 65, 66, 73, 75, 84], [2, 8, 21, 22, 27, 48, 53, 60, 68, 71, 76, 78, 79, 92, 93, 94]], [[5, 7, 11, 12, 13, 15, 24, 25, 26, 29, 36, 39, 44, 47, 51, 56, 57, 61, 69, 72, 74, 77, 80, 82, 86, 87, 90, 96, 97], [3, 18, 28, 34, 38, 45, 46, 54, 67, 75, 83, 85, 88, 94, 95, 98], [4, 8, 10, 17, 37, 53, 62, 93], [0, 1, 2, 6, 9, 14, 16, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 40, 41, 42, 43, 48, 49, 50, 52, 55, 58, 59, 60, 63, 64, 65, 66, 68, 70, 71, 73, 76, 78, 79, 81, 84, 89, 91, 92]], [[6, 15, 25, 28, 34, 45, 47, 61, 72, 83, 85, 88, 98], [1, 2, 3, 9, 12, 14, 18, 20, 21, 22, 23, 24, 26, 27, 31, 33, 38, 39, 41, 42, 44, 46, 48, 54, 58, 59, 60, 65, 67, 68, 71, 76, 78, 79, 84, 86, 92, 94, 95, 96, 97], [0, 5, 7, 11, 13, 16, 19, 29, 30, 32, 35, 36, 40, 43, 49, 50, 51, 52, 55, 56, 57, 63, 64, 66, 69, 70, 73, 74, 75, 77, 80, 81, 82, 87, 89, 90, 91], [4, 8, 10, 17, 37, 53, 62, 93]], [[3, 12, 24, 25, 26, 38, 39, 44, 47, 54, 60, 67, 68, 71, 72, 76, 86, 87, 93, 96, 97, 98], [6, 7, 11, 13, 15, 28, 29, 34, 45, 51, 56, 61, 69, 75, 77, 80, 82, 83, 85, 88, 90, 95], [0, 1, 2, 5, 9, 14, 16, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 36, 37, 40, 41, 42, 43, 49, 50, 52, 53, 55, 57, 58, 59, 62, 63, 64, 65, 66, 70, 73, 74, 79, 81, 84, 89, 91, 92], [4, 8, 10, 17, 18, 46, 48, 78, 94]], [[5, 6, 7, 11, 13, 29, 30, 32, 34, 35, 36, 40, 45, 51, 56, 57, 63, 64, 69, 70, 74, 75, 77, 80, 81, 85, 88, 89, 90, 91], [3, 12, 15, 24, 25, 26, 28, 39, 44, 47, 54, 61, 67, 72, 82, 83, 86, 87, 96, 97, 98], [0, 1, 4, 9, 14, 17, 19, 20, 21, 22, 23, 27, 31, 33, 37, 41, 42, 43, 49, 50, 52, 53, 55, 58, 59, 62, 65, 66, 73, 79, 84, 92, 93], [2, 8, 10, 16, 18, 38, 46, 48, 60, 68, 71, 76, 78, 94, 95]], [[6, 7, 11, 15, 29, 34, 45, 50, 51, 56, 61, 72, 75, 77, 82, 83, 85, 87, 88, 90], [0, 1, 5, 9, 13, 14, 17, 19, 20, 23, 27, 30, 31, 32, 33, 35, 36, 37, 40, 42, 43, 49, 52, 53, 55, 57, 58, 59, 62, 63, 64, 65, 66, 69, 70, 73, 74, 79, 80, 81, 84, 89, 91, 92], [3, 4, 10, 16, 18, 24, 25, 26, 28, 38, 39, 44, 47, 54, 67, 95, 97, 98], [2, 8, 12, 21, 22, 41, 46, 48, 60, 68, 71, 76, 78, 86, 93, 94, 96]], [[4, 5, 6, 7, 10, 11, 13, 16, 18, 28, 29, 34, 36, 45, 51, 56, 57, 64, 69, 74, 75, 77, 80, 81, 82, 85, 87, 90], [0, 1, 9, 14, 17, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 37, 40, 41, 42, 43, 49, 50, 52, 53, 55, 58, 59, 62, 63, 65, 66, 70, 73, 79, 84, 89, 91, 92, 93], [2, 3, 8, 12, 38, 46, 48, 54, 60, 67, 68, 71, 76, 78, 83, 86, 94, 95, 96], [15, 24, 25, 26, 39, 44, 47, 61, 72, 88, 97, 98]], [[3, 12, 24, 25, 26, 28, 38, 39, 44, 46, 47, 48, 54, 61, 67, 68, 76, 78, 83, 86, 94, 95, 96, 97, 98], [6, 7, 11, 13, 15, 29, 34, 45, 50, 51, 56, 69, 72, 75, 77, 80, 82, 85, 87, 88, 90], [0, 4, 5, 9, 10, 14, 16, 17, 18, 19, 23, 30, 31, 32, 33, 35, 36, 37, 40, 42, 43, 49, 52, 55, 57, 58, 62, 63, 64, 65, 66, 70, 73, 74, 81, 84, 89, 91], [1, 2, 8, 20, 21, 22, 27, 41, 53, 59, 60, 71, 79, 92, 93]], [[3, 12, 24, 25, 26, 28, 38, 39, 44, 46, 47, 48, 54, 61, 67, 68, 76, 78, 83, 86, 94, 95, 96, 97, 98], [6, 7, 10, 11, 15, 34, 45, 51, 56, 69, 72, 75, 77, 80, 82, 85, 87, 88, 90], [4, 8, 16, 17, 18, 49, 53, 93], [0, 1, 2, 5, 9, 13, 14, 19, 20, 21, 22, 23, 27, 29, 30, 31, 32, 33, 35, 36, 37, 40, 41, 42, 43, 50, 52, 55, 57, 58, 59, 60, 62, 63, 64, 65, 66, 70, 71, 73, 74, 79, 81, 84, 89, 91, 92]], [[3, 6, 10, 12, 13, 18, 24, 26, 28, 29, 34, 38, 39, 44, 45, 46, 48, 54, 67, 75, 83, 85, 86, 94, 95, 96, 97, 98], [5, 7, 11, 15, 25, 47, 51, 56, 61, 69, 72, 77, 80, 82, 87, 88, 90], [0, 4, 9, 16, 17, 19, 23, 30, 31, 32, 33, 35, 36, 37, 40, 42, 43, 49, 50, 52, 53, 55, 57, 58, 62, 63, 64, 66, 70, 73, 74, 81, 89, 91, 93], [1, 2, 8, 14, 20, 21, 22, 27, 41, 59, 60, 65, 68, 71, 76, 78, 79, 84, 92]], [[3, 12, 24, 25, 26, 28, 38, 39, 44, 46, 47, 48, 54, 61, 67, 68, 76, 78, 83, 86, 94, 95, 96, 97, 98], [5, 6, 7, 11, 13, 15, 29, 34, 45, 51, 56, 69, 72, 75, 77, 80, 82, 85, 87, 88, 90], [1, 2, 9, 14, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 36, 37, 40, 41, 42, 52, 53, 55, 57, 58, 59, 60, 62, 63, 64, 65, 70, 71, 73, 74, 79, 81, 84, 89, 91, 92, 93], [0, 4, 8, 10, 16, 17, 18, 43, 49, 50, 66]], [[5, 6, 7, 11, 13, 15, 29, 34, 45, 51, 56, 69, 72, 75, 77, 80, 82, 85, 87, 88, 90], [0, 4, 9, 16, 17, 19, 23, 30, 31, 32, 33, 35, 36, 37, 40, 42, 43, 49, 50, 52, 53, 55, 57, 58, 62, 63, 64, 66, 70, 73, 74, 81, 89, 91, 93], [3, 10, 12, 18, 24, 25, 26, 28, 38, 39, 44, 46, 47, 48, 54, 61, 67, 83, 86, 94, 95, 96, 97, 98], [1, 2, 8, 14, 20, 21, 22, 27, 41, 59, 60, 65, 68, 71, 76, 78, 79, 84, 92]], [[3, 12, 18, 24, 25, 26, 28, 38, 39, 44, 46, 47, 54, 61, 67, 72, 83, 86, 94, 95, 96, 97, 98], [5, 7, 11, 13, 15, 29, 34, 36, 45, 50, 51, 56, 69, 74, 75, 77, 80, 82, 85, 87, 88, 90], [4, 6, 8, 10, 16, 17, 49, 93], [0, 1, 2, 9, 14, 19, 20, 21, 22, 23, 27, 30, 31, 32, 33, 35, 37, 40, 41, 42, 43, 48, 52, 53, 55, 57, 58, 59, 60, 62, 63, 64, 65, 66, 68, 70, 71, 73, 76, 78, 79, 81, 84, 89, 91, 92]]]
 
 ################################################
 # Summarize computational results to csv file
@@ -51,7 +61,7 @@ def export_to_json(G, districts, filename):
         for j in range(len(districts)):
             for i in districts[j]:
                 soln['nodes'].append({
-                        'name': G.nodes[i]["NAME10"],
+                        'name': G.nodes[i]["NAME20"],
                         'index': i,
                         'district': j
                         })
@@ -68,9 +78,9 @@ def export_to_png(G, df, districts, filename):
     
     for j in range(len(districts)):
         for i in districts[j]:
-            geoID = G.nodes[i]["GEOID10"]
+            geoID = G.nodes[i]["GEOID20"]
             for u in G.nodes:
-                if geoID == df['GEOID10'][u]:
+                if geoID == df['GEOID20'][u]:
                     assignment[u] = j
     
     if min(assignment[v] for v in G.nodes) < 0:
@@ -90,8 +100,8 @@ def export_to_png(G, df, districts, filename):
 
 def export_B_to_png(G, df, B, filename):
     
-    B_geoids = [ G.nodes[i]["GEOID10"] for i in B ]
-    df['B'] = [1 if df['GEOID10'][u] in B_geoids else 0 for u in G.nodes]
+    B_geoids = [ G.nodes[i]["GEOID20"] for i in B ]
+    df['B'] = [1 if df['GEOID20'][u] in B_geoids else 0 for u in G.nodes]
         
     my_fig = df.plot(column='B').get_figure()
     RESIZE_FACTOR = 3
@@ -138,7 +148,10 @@ default_config = {
     'extended' : True,
     'order' : 'B_decreasing',
     'heuristic' : True,
-    'lp': True
+    'lp': True,
+    'deviation' : "8000",
+    'warmstart' : False,  # Warm start with the optimal IA county-level cut edges solutions?
+    'MIP_timelimit' : "3600"
 }
 
 available_config = {
@@ -151,7 +164,10 @@ available_config = {
     'extended' : {True, False},
     'order' : {'none', 'decreasing', 'B_decreasing'},
     'heuristic' : {True, False},
-    'lp' : {True, False} # solve and report root LP bound? (in addition to MIP)
+    'lp' : {True, False}, # solve and report root LP bound? (in addition to MIP)
+    'warmstart' : {True, False}
+    #'deviation' : Any
+    #'MIP_timelimit' : Any
 }
 
 
@@ -187,7 +203,7 @@ results_filename = "../results_for_" + config_filename_wo_extension + "/results_
 
 # prepare csv file by writing column headers
 with open(results_filename,'w',newline='') as csvfile:   
-    my_fieldnames = ['run','state','level','base','fixing','contiguity','symmetry','extended','order','heuristic','lp'] # configs
+    my_fieldnames = ['run','state','level','base','fixing','contiguity','symmetry','extended','order','heuristic','lp','deviation','warmstart'] # configs
     my_fieldnames += ['k','L','U','n','m'] # params
     my_fieldnames += ['heur_obj', 'heur_time', 'heur_iter'] # heuristic info
     my_fieldnames += ['B_q', 'B_size', 'B_time', 'B_timelimit'] # max B info
@@ -207,7 +223,7 @@ for key in batch_configs.keys():
     config = batch_configs[key]
     print("In run",key,"using config:",config,end='.')
     for ckey in config.keys():
-        if config[ckey] not in available_config[ckey]:
+        if ckey != 'deviation' and ckey != 'MIP_timelimit' and config[ckey] not in available_config[ckey]:
             errormessage = "Error: the config option"+ckey+":"+config[ckey]+"is not known."
             sys.exit(errormessage)
     print("")
@@ -224,18 +240,32 @@ for key in batch_configs.keys():
                    
     # read input data
     state = config['state']
-    code = state_codes[state]
+    #code = state_codes[state]
     level = config['level']
-    G = Graph.from_json("../data/"+level+"/dual_graphs/"+level+code+".json")
+    G = Graph.from_json("../data/"+state+"_"+level+".json")
+    try:
+        G.nodes[i]['TOTPOP']
+    except:
+        for i in G.nodes:
+            G.nodes[i]['TOTPOP'] = G.nodes[i]['P0010001'] 
     DG = nx.DiGraph(G) # bidirected version of G
-    df = gpd.read_file("../data/"+level+"/shape_files/"+state+"_"+level+".shp")      
+    df = gpd.read_file("../data/"+state+"_"+level+".shp")      
 
     # set parameters
     k = number_of_congressional_districts[state]        
     population = [G.nodes[i]['TOTPOP'] for i in G.nodes()]    
-    deviation = 0.01
-    L = math.ceil((1-deviation/2)*sum(population)/k)
-    U = math.floor((1+deviation/2)*sum(population)/k)
+
+    deviation = int( config['deviation'] )
+    L = math.ceil(sum(population)/k-deviation)
+    U = math.floor(sum(population)/k+deviation)
+    # deviation = 0.01
+    # L = math.ceil((1-deviation/2)*sum(population)/k)
+    # U = math.floor((1+deviation/2)*sum(population)/k)
+
+    # deviation = 0
+    # L = math.floor( sum(population) / k )
+    # U = math.ceil( sum(population) / k )
+    
     print("L =",L,", U =",U,", k =",k)
     result['k'] = k
     result['L'] = L
@@ -263,7 +293,19 @@ for key in batch_configs.keys():
         result['heur_obj'] = 'n/a'
         result['heur_time'] = 'n/a'
         result['heur_iter'] = 'n/a'
-        
+
+    # read heuristic solution from hard-coded warmstart?
+    if config['warmstart']:
+        assert state == 'IA' and level == 'county', "The hard-coded warm starts are only for Iowa county-level cut edges instance."
+        heuristic = True # need this to be True for later warmstart injection
+        for plan in warmstarts:
+            if exhibited_deviation(G, plan) > deviation + 1e-6:
+                continue
+            if heuristic_districts is None or cut_edges(G, plan) <= cut_edges(G, heuristic_districts):
+                heuristic_districts = [ district for district in plan ]
+        result['warmstart'] = cut_edges(G, heuristic_districts)
+    else:
+        result['warmstart'] = 'n/a'
            
     ############################
     # Build base model
@@ -349,7 +391,7 @@ for key in batch_configs.keys():
         (B, result['B_q'], result['B_time'], result['B_timelimit']) = ordering.solve_maxB_problem(DG, population, L, k, heuristic_districts)
         
         # draw set B on map and save
-        fn_B = "../" + "results_for_" + config_filename_wo_extension + "/" + result['state'] + "-" + result['level'] + "-maxB.png"       
+        fn_B = "../" + "results_for_" + config_filename_wo_extension + "/" + result['state'] + "-" + result['level'] + "_" + str(deviation) + "-maxB.png"       
         export_B_to_png(G, df, B, fn_B)
     else:
         (B, result['B_q'], result['B_time'], result['B_timelimit']) = (list(),'n/a','n/a', 'n/a')
@@ -486,7 +528,7 @@ for key in batch_configs.keys():
     # Solve MIP
     ####################################  
     
-    result['MIP_timelimit'] = 3600 # set a one hour time limit
+    result['MIP_timelimit'] = float( config['MIP_timelimit'] )
     m.Params.TimeLimit = result['MIP_timelimit']
     m.Params.Method = 3 # use concurrent method for root LP. Useful for degenerate models
     
@@ -500,6 +542,7 @@ for key in batch_configs.keys():
     result['MIP_bound'] = m.objBound
     result['callbacks'] = m._numCallbacks
     result['lazy_cuts'] = m._numLazyCuts
+    result['deviation'] = deviation
     
     # report best solution found
     if m.SolCount > 0:
@@ -516,11 +559,11 @@ for key in batch_configs.keys():
         fn = "../" + "results_for_" + config_filename_wo_extension + "/" + result['state'] + "-" + result['level'] + "-" + result['base'] + "-" + result['contiguity']
         
         # export solution to .json file
-        json_fn = fn + ".json"
+        json_fn = fn + "_" + str(deviation) + ".json"
         export_to_json(G, districts, json_fn)
         
         # export solution to .png file (districting map)
-        png_fn = fn + ".png"
+        png_fn = fn + "_" + str(deviation) + ".png"
         export_to_png(G, df, districts, png_fn)
         
         # is solution connected?
