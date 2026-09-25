@@ -4,7 +4,7 @@ from gurobipy import GRB
 import networkx as nx
 
 def find_fischetti_separator(DG, component, b):
-    neighbors_component = [False for i in DG.nodes]
+    neighbors_component = { i : False for i in DG.nodes }
     for i in nx.node_boundary(DG, component, None):
         neighbors_component[i] = True
     

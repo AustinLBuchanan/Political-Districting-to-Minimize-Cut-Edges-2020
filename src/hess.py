@@ -4,14 +4,14 @@ from gurobipy import GRB
 def add_base_constraints(m, population, L, U, k):
     DG = m._DG
     # Each vertex i assigned to one district
-    m.addConstrs(gp.quicksum(m._X[i,j] for j in DG.nodes) == 1 for i in DG.nodes)
+    m.addConstrs(sum(m._X[i,j] for j in DG.nodes) == 1 for i in DG.nodes)
      
     # Pick k centers
-    m.addConstr(gp.quicksum(m._X[j,j] for j in DG.nodes) == k)
+    m.addConstr(sum(m._X[j,j] for j in DG.nodes) == k)
     
     # Population balance: population assigned to vertex j should be in [L,U], if j is a center
-    m.addConstrs(gp.quicksum(population[i] * m._X[i,j] for i in DG.nodes) <= U * m._X[j,j] for j in DG.nodes)
-    m.addConstrs(gp.quicksum(population[i] * m._X[i,j] for i in DG.nodes) >= L * m._X[j,j] for j in DG.nodes)
+    m.addConstrs(sum(population[i] * m._X[i,j] for i in DG.nodes) <= U * m._X[j,j] for j in DG.nodes)
+    m.addConstrs(sum(population[i] * m._X[i,j] for i in DG.nodes) >= L * m._X[j,j] for j in DG.nodes)
     
     # Add coupling inequalities for added model strength
     couplingConstrs = m.addConstrs(m._X[i,j] <= m._X[j,j] for i in DG.nodes for j in DG.nodes)
@@ -30,14 +30,14 @@ def add_objective(m, G):
     # Y[i,j] = 1 if edge {i,j} is cut
     m._Y = m.addVars(G.edges, vtype=GRB.BINARY)
     m.addConstrs( m._X[i,v]-m._X[j,v] <= m._Y[i,j] for i,j in G.edges for v in G.nodes)
-    m.setObjective( gp.quicksum(m._Y), GRB.MINIMIZE )
+    m.setObjective( m._Y.sum(), GRB.MINIMIZE )
     
 
 def add_extended_objective(m, G):
     # Z[i,j,v] = 1 if edge (i,j) is cut because i->v but j!->v
     m._Z = m.addVars(G.edges, G.nodes, vtype=GRB.BINARY) 
     m.addConstrs( m._X[i,v]-m._X[j,v] <= m._Z[i,j,v] for i,j in G.edges for v in G.nodes)
-    m.setObjective( gp.quicksum(m._Z), GRB.MINIMIZE )
+    m.setObjective( m._Z.sum(), GRB.MINIMIZE )
     
     
 def most_possible_nodes_in_one_district(population, U):
@@ -59,9 +59,9 @@ def add_shir_constraints(m):
     # compute big-M    
     M = most_possible_nodes_in_one_district(m._population, m._U) - 1
     
-    m.addConstrs( gp.quicksum(F[j,u,j] for u in DG.neighbors(j)) == 0 for j in DG.nodes)
-    m.addConstrs( gp.quicksum( F[j,u,i]-F[j,i,u] for u in DG.neighbors(i) ) == m._X[i,j] for i in DG.nodes for j in DG.nodes if i!=j)
-    m.addConstrs( gp.quicksum( F[j,u,i] for u in DG.neighbors(i) ) <= M * m._X[i,j] for i in DG.nodes for j in DG.nodes if i!=j)
+    m.addConstrs( sum(F[j,u,j] for u in DG.neighbors(j)) == 0 for j in DG.nodes)
+    m.addConstrs( sum( F[j,u,i]-F[j,i,u] for u in DG.neighbors(i) ) == m._X[i,j] for i in DG.nodes for j in DG.nodes if i!=j)
+    m.addConstrs( sum( F[j,u,i] for u in DG.neighbors(i) ) <= M * m._X[i,j] for i in DG.nodes for j in DG.nodes if i!=j)
     m.update()
       
         
@@ -74,11 +74,11 @@ def add_scf_constraints(m, G, extended):
     # compute big-M
     M = most_possible_nodes_in_one_district(m._population, m._U) - 1
     
-    m.addConstrs( gp.quicksum(m._X[i,j] for i in DG.nodes) == gp.quicksum(F[j,u]-F[u,j] for u in DG.neighbors(j)) + 1 for j in DG.nodes)
-    m.addConstrs( gp.quicksum(F[u,j] for u in DG.neighbors(j)) <= M * (1-m._X[j,j]) for j in DG.nodes)
+    m.addConstrs( sum(m._X[i,j] for i in DG.nodes) == sum(F[j,u]-F[u,j] for u in DG.neighbors(j)) + 1 for j in DG.nodes)
+    m.addConstrs( sum(F[u,j] for u in DG.neighbors(j)) <= M * (1-m._X[j,j]) for j in DG.nodes)
         
     if extended:
-        m.addConstrs( F[i,j] + F[j,i] <= M * (1 - gp.quicksum(m._Z[i,j,v] for v in G.nodes)) for i,j in G.edges)
+        m.addConstrs( F[i,j] + F[j,i] <= M * (1 - sum(m._Z[i,j,v] for v in G.nodes)) for i,j in G.edges)
     else:
         m.addConstrs( F[i,j] + F[j,i] <= M * (1 - m._Y[i,j]) for i,j in G.edges)
         

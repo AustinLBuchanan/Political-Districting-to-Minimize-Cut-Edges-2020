@@ -39,16 +39,16 @@ def solve_maxB_problem(DG, population, L, k, heuristic_districts):
     B = m.addVars(DG.nodes, vtype=GRB.BINARY)
    
     # assignment constraints            
-    m.addConstrs( gp.quicksum(X[i,j] for j in range(q)) == B[i] for i in DG.nodes )
+    m.addConstrs( sum(X[i,j] for j in range(q)) == B[i] for i in DG.nodes )
                 
     # bin population should be less than L
-    m.addConstrs( gp.quicksum(population[i] * X[i,j] for i in DG.nodes) <= L-1 for j in range(q) )
+    m.addConstrs( sum(population[i] * X[i,j] for i in DG.nodes) <= L-1 for j in range(q) )
     
     # bins shouldn't touch each other
     m.addConstrs( X[u,j] + B[v] <= 1 + X[v,j] for u,v in DG.edges for j in range(q) )
     
     # objective is to maximize size of set B
-    m.setObjective( gp.quicksum( B ), GRB.MAXIMIZE )
+    m.setObjective( B.sum(), GRB.MAXIMIZE )
     
     m.Params.MIPFocus = 1 # turn on MIPFocus
     B_timelimit = 60

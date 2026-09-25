@@ -5,25 +5,25 @@ def add_base_constraints(m, population, L, U, k):
     DG = m._DG # bidirected version of G
     
     # Each vertex i assigned to one district
-    m.addConstrs(gp.quicksum(m._X[i,j] for j in range(k)) == 1 for i in DG.nodes)
+    m.addConstrs(sum(m._X[i,j] for j in range(k)) == 1 for i in DG.nodes)
      
     # Population balance: population assigned to district j should be in [L,U]
-    m.addConstrs(gp.quicksum(population[i] * m._X[i,j] for i in DG.nodes) <= U for j in range(k))
-    m.addConstrs(gp.quicksum(population[i] * m._X[i,j] for i in DG.nodes) >= L for j in range(k)) 
+    m.addConstrs(sum(population[i] * m._X[i,j] for i in DG.nodes) <= U for j in range(k))
+    m.addConstrs(sum(population[i] * m._X[i,j] for i in DG.nodes) >= L for j in range(k)) 
     
  
 def add_objective(m, G, k):
     # Y[i,j] = 1 if edge {i,j} is cut
     m._Y = m.addVars(G.edges, vtype=GRB.BINARY)
     m.addConstrs( m._X[i,v]-m._X[j,v] <= m._Y[i,j] for i,j in G.edges for v in range(k))
-    m.setObjective( gp.quicksum(m._Y), GRB.MINIMIZE )
+    m.setObjective( m._Y.sum(), GRB.MINIMIZE )
 
     
 def add_extended_objective(m, G, k):
     # Z[i,j,v] = 1 if edge (i,j) is cut because i->v but j!->v
     m._Z = m.addVars(G.edges, range(k), vtype=GRB.BINARY)
     m.addConstrs( m._X[i,v]-m._X[j,v] <= m._Z[i,j,v] for i,j in G.edges for v in range(k))
-    m.setObjective( gp.quicksum(m._Z), GRB.MINIMIZE)
+    m.setObjective( m._Z.sum(), GRB.MINIMIZE)
 
 
 def add_orbitope_extended_formulation(m, G, k, ordering):
@@ -73,17 +73,17 @@ def add_shir_constraints(m, symmetry):
     
     # the following constraints are weaker than some in the orbitope EF
     if symmetry != 'orbitope':
-        m.addConstrs( gp.quicksum(m._R[i,j] for i in DG.nodes)==1 for j in range(k) )
+        m.addConstrs( sum(m._R[i,j] for i in DG.nodes)==1 for j in range(k) )
         m.addConstrs( m._R[i,j] <= m._X[i,j] for i in DG.nodes for j in range(k) )
     
     # flow can only be generated at roots
     m.addConstrs( g[i,j] <= (M+1)*m._R[i,j] for i in DG.nodes for j in range(k) )
     
     # flow balance
-    m.addConstrs( g[i,j] - m._X[i,j] == gp.quicksum(f[j,i,u]-f[j,u,i] for u in DG.neighbors(i)) for i in DG.nodes for j in range(k) )
+    m.addConstrs( g[i,j] - m._X[i,j] == sum(f[j,i,u]-f[j,u,i] for u in DG.neighbors(i)) for i in DG.nodes for j in range(k) )
     
     # flow type j can enter vertex i only if (i is assigned to district j) and (i is not root of j)
-    m.addConstrs( gp.quicksum(f[j,u,i] for u in DG.neighbors(i)) <= M*(m._X[i,j]-m._R[i,j]) for i in DG.nodes for j in range(k) )
+    m.addConstrs( sum(f[j,u,i] for u in DG.neighbors(i)) <= M*(m._X[i,j]-m._R[i,j]) for i in DG.nodes for j in range(k) )
            
 
 def add_scf_constraints(m, G, extended, symmetry):
@@ -98,16 +98,16 @@ def add_scf_constraints(m, G, extended, symmetry):
     
     # the following constraints are weaker than some in the orbitope EF
     if symmetry != 'orbitope':
-        m.addConstrs( gp.quicksum(m._R[i,j] for i in DG.nodes)==1 for j in range(k) )
+        m.addConstrs( sum(m._R[i,j] for i in DG.nodes)==1 for j in range(k) )
         m.addConstrs( m._R[i,j] <= m._X[i,j] for i in DG.nodes for j in range(k) )  
     
     # if not a root, consume some flow.
     # if a root, only send out so much flow.
-    m.addConstrs( gp.quicksum(f[u,v]-f[v,u] for u in DG.neighbors(v)) >= 1 - M * gp.quicksum(m._R[v,j] for j in range(k)) for v in G.nodes)
+    m.addConstrs( sum(f[u,v]-f[v,u] for u in DG.neighbors(v)) >= 1 - M * sum(m._R[v,j] for j in range(k)) for v in G.nodes)
     
     # do not send flow across cut edges
     if extended:
-        m.addConstrs( f[i,j] + f[j,i] <= (M-1)*(1 - gp.quicksum( m._Z[i,j,v] for v in range(k) )) for (i,j) in G.edges)
+        m.addConstrs( f[i,j] + f[j,i] <= (M-1)*(1 - sum( m._Z[i,j,v] for v in range(k) )) for (i,j) in G.edges)
     else:
         m.addConstrs( f[i,j] + f[j,i] <= (M-1)*(1 - m._Y[i,j]) for (i,j) in G.edges )
             

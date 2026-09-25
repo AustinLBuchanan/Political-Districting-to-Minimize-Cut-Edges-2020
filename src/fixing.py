@@ -6,7 +6,7 @@ def reachable_population(G, population, S, v):
     if not S[v]:
         return 0
     
-    visited = [False for i in G.nodes]
+    visited = { i : False for i in G.nodes }
     child = [v]
     visited[v] = True
     while child:
