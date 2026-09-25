@@ -1,4 +1,0 @@
-{
-  "cold": {"state": "IA", "level": "county", "base": "labeling", "fixing": true, "contiguity": "lcut", "symmetry": "orbitope", "extended": true, "order": "B_decreasing", "heuristic": false, "lp": false, "deviation":1, "warmstart": false, "MIP_timelimit":86400},
-  "warm": {"state": "IA", "level": "county", "base": "labeling", "fixing": true, "contiguity": "lcut", "symmetry": "orbitope", "extended": true, "order": "B_decreasing", "heuristic": false, "lp": false, "deviation":1, "warmstart": true, "MIP_timelimit":86400}
-}
