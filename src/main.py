@@ -22,8 +22,16 @@ import ordering
 import fixing
 import separation
 
-from gerrychain import Graph
+#from gerrychain import Graph
 import geopandas as gpd
+
+import json
+from networkx.readwrite import json_graph
+
+def read_graph_from_json(json_file):
+    with open(json_file) as f:
+        data = json.load(f)
+    return json_graph.adjacency_graph(data) 
 
 def cut_edges(G, plan):
     a = { i : j for j in range(len(plan)) for i in plan[j] }
@@ -242,7 +250,7 @@ for key in batch_configs.keys():
     state = config['state']
     #code = state_codes[state]
     level = config['level']
-    G = Graph.from_json("../data/"+state+"_"+level+".json")
+    G = read_graph_from_json("../data/"+state+"_"+level+".json")
     try:
         G.nodes[i]['TOTPOP']
     except:
